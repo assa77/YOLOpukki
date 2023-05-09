@@ -1,0 +1,1 @@
+@python.exe detect_video_mp.py

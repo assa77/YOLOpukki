@@ -1,0 +1,17 @@
+#--- Required ---
+#numpy==1.20.0		# Required by intelpython 3.7.11!!!
+matplotlib==3.3.0	# VC-redist is required
+#intelpython 3.7.11
+#tcl==8.6.9		# Patched to 8.6.10!
+#Tk==8.6.9		# Patched to 8.6.10!
+opencv-python>=4.4.0.46
+tensorflow==2.3.4
+keras==2.4.0
+
+#nvidia_display_driver==516.94
+#nvidia_cuda_runtime_cu10==10.1
+#nvidia_cudnn_cu10==7.6.5
+
+#--- Additional ---
+#tensorrt
+#pip install jupyterlab

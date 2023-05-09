@@ -1,0 +1,24 @@
+#--- Required ---
+#numpy>=1.18.2
+# for intelpython:
+numpy>=1.20.0
+matplotlib==3.3.0	# VC-redist is required
+opencv-python>=4.4.0.46
+tensorflow>=2.10.0,<2.11
+#keras>=2.10.0,<2.11
+
+#nvidia_cuda_runtime_cu11
+#nvidia_cudnn_cu11
+#nvidia_cublas_cu11
+
+#nvidia_cuda_runtime_cu12>=12.0.0
+#nvidia_cuda_runtime_cu11>=11.8.0
+#nvidia_cudnn_cu12>=8.8.0
+#nvidia_cudnn_cu11>=8.8.0
+#nvidia_cublas_cu12>=12.0.0
+#nvidia_cublas_cu11>=11.8.0
+
+#--- Additional ---
+#tensorrt>=8.1.0
+#tensorrt==8.5.3.1
+#pip install jupyterlab
