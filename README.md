@@ -80,7 +80,7 @@ Approximate performance data is shown in the following table.
 
 ## Contributing
 
-**[YOLOpukki](https://github.com/assa77/YOLOpukki** was developed by *[Alexander M. Albertian](mailto:assa@4ip.ru)*.
+**[YOLOpukki](https://github.com/assa77/YOLOpukki)** was developed by *[Alexander M. Albertian](mailto:assa@4ip.ru)*.
 YOLO model is based on YOLOv3 and YOLOv4 public Python code.
 
 All contributions are welcome! Please do **NOT** use an editor that automatically reformats whitespace.
