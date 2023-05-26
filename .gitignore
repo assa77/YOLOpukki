@@ -1,0 +1,122 @@
+mAP/
+mnist/mnist_test/
+#mnist/mnist_test.txt
+mnist/mnist_train/
+#mnist/mnist_train.txt
+#test.jpg
+#output.avi
+#test.avi
+checkpoints/*/
+checkpoints/*.h5
+checkpoints/checkpoint
+#checkpoints/yolov4.weights
+#checkpoints/yolov4-custom.data-00000-of-00001
+#checkpoints/yolov3.weights
+#checkpoints/yolov3-custom.data-00000-of-00001
+.checkpoints.edk
+.*/
+
+# Backups
+*.bak
+*.old
+
+# Intel Compiler
+*.optrpt
+
+# Visual Studio
+.vs
+.suo
+*.opendb
+*.db
+*.log
+*.tlog
+*.lastbuildstate
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+#*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Python caches
+__pycache__
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.pdb
+*.out
+*.app
+*.mic
+
+# =========================
+# Operating System Files
+# =========================
+
+# OSX
+# =========================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# xNIX hidden files
+#.*
+
+# Windows
+# =========================
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
