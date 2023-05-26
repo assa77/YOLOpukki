@@ -24,8 +24,6 @@ from yolov3.yolov4 import Create_Yolo, compute_loss
 from yolov3.utils import load_yolo_weights
 from evaluate_mAP import get_mAP
 
-if YOLO_TINY: TRAIN_MODEL_NAME += "_Tiny"
-
 def main( ):
 	global TRAIN_FROM_CHECKPOINT
 
@@ -55,7 +53,7 @@ def main( ):
 	yolo = Create_Yolo( input_size = YOLO_INPUT_SIZE, training = True )
 	if TRAIN_FROM_CHECKPOINT:
 		try:
-			yolo.load_weights( f"./{YOLO_CHECKPOINTS}/{TRAIN_MODEL_NAME}" )
+			yolo.load_weights( CUSTOM_WEIGHTS )
 		except ValueError:
 			print( "Shapes are incompatible, transfering Darknet weights" )
 			TRAIN_FROM_CHECKPOINT = False
@@ -149,7 +147,7 @@ def main( ):
 
 		if len( testset ) == 0:
 			print( "configure TEST options to validate model" )
-			yolo.save_weights( os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME ) )
+			yolo.save_weights( CUSTOM_WEIGHTS )
 			continue
 
 		count, giou_val, conf_val, prob_val, total_val = 0., 0, 0, 0, 0
@@ -181,15 +179,12 @@ def main( ):
 			epoch, giou_val / count, conf_val / count, prob_val / count, total_val / count ) )
 
 		if TRAIN_SAVE_CHECKPOINT and not TRAIN_SAVE_BEST_ONLY:
-			save_directory = os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME + "_val_loss_{:7.2f}".format( total_val / count ) )
-			yolo.save_weights( save_directory )
-		if TRAIN_SAVE_BEST_ONLY and best_val_loss > total_val / count:
-			save_directory = os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME )
-			yolo.save_weights( save_directory )
+			yolo.save_weights( CUSTOM_WEIGHTS + "_val_loss_{:7.2f}".format( total_val / count ) )
+		elif TRAIN_SAVE_BEST_ONLY and best_val_loss > total_val / count:
+			yolo.save_weights( CUSTOM_WEIGHTS )
 			best_val_loss = total_val / count
-		if not TRAIN_SAVE_BEST_ONLY and not TRAIN_SAVE_CHECKPOINT:
-			save_directory = os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME )
-			yolo.save_weights( save_directory )
+		elif not TRAIN_SAVE_BEST_ONLY and not TRAIN_SAVE_CHECKPOINT:
+			yolo.save_weights( CUSTOM_WEIGHTS )
 
 	# measure mAP of trained custom model
 	try:
