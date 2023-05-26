@@ -19,21 +19,22 @@ pip install -r ./requirements.txt
 ## Usage
 
 Use [prepare.bat](prepare.bat) or [prepare.sh](prepare.sh) to build train and test datasets from the MNIST data.
-You can use directly [prepare.py](prepare.py) or interactively run [YOLOprepare.ipynb](YOLOprepare.ipynb) Python notebook.
+You can use directly [prepare.py](prepare.py) or interactively run [prepare.ipynb](prepare.ipynb) Python notebook.
 
-To customize the YOLO model, dataset, TensorRT, etc. you can edit the supplied [yolov3/configs.py](yolov3/configs.py). Or copy some preconfigured file from [yolov3/configs](yolov3/configs) or [yolov3/configs.tiny](yolov3/configs.tiny) subdirectories.
+To customize the YOLO model, dataset, TensorRT, etc. you can edit the supplied [yolov3/configs.py](yolov3/configs.py). Or copy some preconfigured file from [yolov3/configs](yolov3/configs), [yolov3/configs.tiny](yolov3/configs.tiny), [yolov3/coco](yolov3/coco) or [yolov3/coco.tiny](yolov3/coco.tiny) subdirectory.
 
 Run [train.bat](train.bat)/[train.sh](train.sh) to train YOLOv3/YOLOv4 on the resulting dataset or use some pretrained data in the [checkpoints](checkpoints) directory. You can use *train.xxx.py* scripts to train using the specified device - generic version or GPUx (or just overwrite [train.py](train.py) file).
 
-- [save.bat](save.bat)/[save.sh](save.sh) to save the resulting model in Tensorflow format
-- [convert.bat](convert.bat)/[convert.sh](convert.sh) to convert saved model to all of supported TensorRT types (FP16/FP32/INT8)
-- [mAP.bat](mAP.bat)/[mAP.sh](mAP.sh) to evaluate mAP and performance of the resulting model
-- [detect.bat](detect.bat)/[detect.sh](detect.sh) to demonstrate detection using custom weights
-- [detect_video.bat](detect_video.bat)/[detect_video.sh](detect_video.sh) to view a real-time generate video detection demo
-- [detect_video_mp.bat](detect_video_mp.bat)/[detect_video_mp.sh](detect_video_mp.sh) to view a video detection demo using the multiprocessing feature
-- [load.bat](load.bat)/[load.sh](load.sh) for detection demo using saved Tensorflow model
+- [save.bat](save.bat)/[save.sh](save.sh) to save the selected model type in Tensorflow format (set *YOLO_TYPE*, *YOLO_TINY*, *YOLO_CUSTOM_WEIGHTS*, etc. in the [yolov3/configs.py](yolov3/configs.py))
+- [convert.bat](convert.bat)/[convert.sh](convert.sh) to convert saved model to all of supported TensorRT types (*FP16*/*FP32*/*INT8*)
+- [mAP.bat](mAP.bat)/[mAP.sh](mAP.sh) to evaluate mAP and performance of the selected model
+- [detect.bat](detect.bat)/[detect.sh](detect.sh) to demonstrate image detection (should be *YOLO_CUSTOM_WEIGHTS = True*)
+- [load.bat](load.bat)/[load.sh](load.sh) for detection demo using saved Tensorflow model (custom model of the selected type must be previously saved using [save.bat](save.bat)/[save.sh](save.sh))
+- [detect_video.bat](detect_video.bat)/[detect_video.sh](detect_video.sh) to view a real-time generated video detection demo (should be *YOLO_CUSTOM_WEIGHTS = True*)
+- [detect_video_mp.bat](detect_video_mp.bat)/[detect_video_mp.sh](detect_video_mp.sh) to view a video detection demo using the multiprocessing feature (should be *YOLO_CUSTOM_WEIGHTS = True*)
+- [detect_video_file.bat](detect_video_file.bat) [test.mp4](test.mp4)/[detect_video_file.sh](detect_video_file.sh) [test.mp4](test.mp4) (or any other video file or even live video if no file name is specified) to view a multiprocessing video file detection demo (don't forget to edit [yolov3/configs.py](yolov3/configs.py) or copy it from [yolov3/coco](yolov3/coco) or [yolov3/coco.tiny](yolov3/coco.tiny) subdirectory, should be *YOLO_CUSTOM_WEIGHTS = False* for real video files)
 
-All demos will produce image [mnist_test.jpg](mnist_test.jpg) or video [mnist_out.mp4](mnist_out.mp4) files saved into the root directory of the project.
+All demos will produce image [test.jpg](test.jpg), video [output.avi](output.avi) or [test.avi](test.avi) files saved into the root directory of the project.
 
 ## Performance
 

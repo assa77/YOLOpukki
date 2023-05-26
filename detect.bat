@@ -1,1 +1,1 @@
-@python.exe detect_mnist.py
+@python.exe detect_image.py

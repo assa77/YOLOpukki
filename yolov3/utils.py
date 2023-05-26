@@ -7,26 +7,31 @@
 #  All rights reserved.
 ###############################################################################
 
-from multiprocessing import Process, Queue, Pipe
-import cv2
+from multiprocessing import Process, Queue, current_process
+import sys
 import time
 import random
 import colorsys
 import numpy as np
+import cv2
 import tensorflow as tf
 from yolov3.classes import *
 from yolov3.yolov4 import *
 from tensorflow.python.saved_model import tag_constants
 
+QUEUE_SIZE = 32
+PROCESS_TIMEOUT = 5
+QUEUE_TIMEOUT = 10
+
 def load_yolo_weights( model, weights_file ):
 	tf.keras.backend.clear_session( )	# used to reset layer names
 	# load Darknet original weights to TensorFlow model
 	if YOLO_TYPE == "yolov3":
-		range1 = 75 if not TRAIN_YOLO_TINY else 13
-		range2 = [ 58, 66, 74 ] if not TRAIN_YOLO_TINY else [ 9, 12 ]
+		range1 = 75 if not YOLO_TINY else 13
+		range2 = [ 58, 66, 74 ] if not YOLO_TINY else [ 9, 12 ]
 	if YOLO_TYPE == "yolov4":
-		range1 = 110 if not TRAIN_YOLO_TINY else 21
-		range2 = [ 93, 101, 109 ] if not TRAIN_YOLO_TINY else [ 17, 20 ]
+		range1 = 110 if not YOLO_TINY else 21
+		range2 = [ 93, 101, 109 ] if not YOLO_TINY else [ 17, 20 ]
 
 	with open( weights_file, 'rb' ) as wf:
 		major, minor, revision, seen, _ = np.fromfile( wf, dtype = np.int32, count = 5 )
@@ -84,7 +89,7 @@ def Load_Yolo_model( ):
 		if not YOLO_CUSTOM_WEIGHTS:
 			load_yolo_weights( yolo, DARKNET_WEIGHTS )	# use Darknet weights
 		else:
-			yolo.load_weights( DARKNET_WEIGHTS )		# use custom weights
+			yolo.load_weights( CUSTOM_WEIGHTS )		# use custom weights
 	elif YOLO_FRAMEWORK == "trt":	# TensorRT detection
 		saved_model_loaded = tf.saved_model.load( SAVED_TRT_MODEL, tags = [ tag_constants.SERVING ] )
 		signature_keys = list( saved_model_loaded.signatures.keys( ) )
@@ -306,20 +311,24 @@ def detect_image( Yolo, image_path, output_path, input_size = 416, show = False,
 	return image
 
 def Predict_bbox_mp( Stop_in, Stop, Frames_data, Predicted_data, Processing_times ):
-	print( "Predict_bbox_mp: Starting..." )
+	print( f"Predict_bbox_mp: {current_process( ).name}", flush = True )
 
 	gpus = tf.config.experimental.list_physical_devices( 'GPU' )
 	if len( gpus ) > 0:
 		try: tf.config.experimental.set_memory_growth( gpus[ 0 ], True )
-		except RuntimeError: print( "RuntimeError in tf.config.experimental.list_physical_devices( 'GPU' )" )
+		except RuntimeError: pass
 
 	Yolo = Load_Yolo_model( )
 
 #	Yolo.training = False
 
+	tp = -1.
+
 	while True:
-		if not Frames_data.empty( ):
-			image_data = Frames_data.get( )
+		if not Frames_data.empty( ) and not Processing_times.full( ) and not Predicted_data.full( ):
+			tp = time.perf_counter( )
+
+			image_data = Frames_data.get_nowait( )
 
 			Processing_times.put( time.perf_counter( ) )
 
@@ -341,78 +350,101 @@ def Predict_bbox_mp( Stop_in, Stop, Frames_data, Predicted_data, Processing_time
 
 		#	Frames_data.task_done( )
 
-		elif not Stop_in.empty( ):
-			print( "Predict_bbox_mp: Stop signaled..." )
-			Stop.put( 1 )
-			break
+		#	print( "Predict_bbox_mp: {:.3f}".format( time.perf_counter( ) - tp ), flush = True )
+		#	print( "\t", Processing_times.qsize( ), "\t\t", Frames_data.qsize( ), "\t", Predicted_data.qsize( ), flush = True )
 
-	print( "Predict_bbox_mp: Stopping..." )
+		if not Stop_in.empty( ):
+			if Stop.empty( ):
+				print( "Predict_bbox_mp: Stop signaled...", flush = True )
+				Stop.put( 1 )
+			if tp >= 0. and time.perf_counter( ) - tp > PROCESS_TIMEOUT:
+				break
+
+	print( "Predict_bbox_mp: End...", flush = True )
 
 def Postprocess_mp( Stop_in, Stop, Predicted_data, Original_frames, Processed_frames, Processing_times, input_size, score_threshold, iou_threshold, realtime, rectangle_colors ):
-	print( "Postprocess_mp: Starting..." )
+	print( f"Postprocess_mp: {current_process( ).name}", flush = True )
 
 	times = [ ]
+	tp = -1.
 
 	while True:
-		if not Predicted_data.empty( ):
-			pred_bbox = Predicted_data.get( )
-			original_image = Original_frames.get( )
+		if not Predicted_data.empty( ) and not Original_frames.empty( ) and not Processing_times.empty( ) and not Processed_frames.full( ):
+			tp = time.perf_counter( )
+
+			original_image = Original_frames.get_nowait( )
+			pred_bbox = Predicted_data.get_nowait( )
 
 			bboxes = postprocess_boxes( pred_bbox, original_image, input_size, score_threshold )
 			bboxes = nms( bboxes, iou_threshold, method = 'nms' )
 			image = draw_bbox( original_image, bboxes, rectangle_colors = rectangle_colors )
-			times.append( time.perf_counter( ) - Processing_times.get( ) )
+			times.append( time.perf_counter( ) - Processing_times.get_nowait( ) )
 			times = times[ -20 : ]
 
 			ms = sum( times ) / len( times ) * 1000
 			fps = 1000 / ms
-			image = cv2.putText( image, "{:.1f}FPS".format( fps ), ( 6, image.shape[ 0 ] - 6 ), cv2.FONT_HERSHEY_PLAIN, 1, ( 0, 0, 255 ), 2 )
-		#	print( "Time: {:.2f}ms, Final FPS: {:.1f}".format( ms, fps ) )
+			image = cv2.putText( image, "{:.1f} FPS".format( fps ), ( 6, image.shape[ 0 ] - 6 ), cv2.FONT_HERSHEY_PLAIN, 1, ( 0, 0, 255 ), 2 )
+		#	print( "Time: {:.2f}ms, Final FPS: {:.1f}".format( ms, fps ), flush = True )
 
 			Processed_frames.put( image )
 
 		#	Processing_times.task_done( )
-		#	Original_frames.task_done( )
 		#	Predicted_data.task_done( )
+		#	Original_frames.task_done( )
 
-		elif not Stop_in.empty( ):
-			print( "Postprocess_mp: Stop signaled..." )
-			Stop.put( 1 )
-			break
+		#	print( "Postprocess_mp: {:.3f}".format( time.perf_counter( ) - tp ), flush = True )
+		#	print( "\t", Processing_times.qsize( ), "\t", Original_frames.qsize( ), "\t\t", Predicted_data.qsize( ), "\t", Processed_frames.qsize( ), flush = True )
 
-	print( "Postprocess_mp: Stopping..." )
+		if not Stop_in.empty( ):
+			if Stop.empty( ):
+				print( "Postprocess_mp: Stop signaled...", flush = True )
+				Stop.put( 1 )
+			if tp >= 0. and time.perf_counter( ) - tp > PROCESS_TIMEOUT:
+				break
+
+	print( "Postprocess_mp: End...", flush = True )
 
 def Show_image_mp( Stop_in, Stop, Processed_frames, output_path, width, height, fps, show ):
-	print( "Show_image_mp: Starting..." )
+	print( f"Show_image_mp: {current_process( ).name}", flush = True )
 
 	if output_path:
-		codec = cv2.VideoWriter_fourcc( *'XVID' )
-		out = cv2.VideoWriter( output_path, codec, fps, ( width, height ) )	# output_path must be .mp4
+		codec = cv2.VideoWriter_fourcc( 'm', 'p', '4', 'v' )
+		out = cv2.VideoWriter( output_path, codec, fps, ( width, height ) )
+
+	tp = -1.
 
 	while True:
 		if not Processed_frames.empty( ):
+			tp = time.perf_counter( )
+
 			while not Processed_frames.empty( ):
-				image = Processed_frames.get( )
-			#	Final_frames.put( image )
+				image = Processed_frames.get_nowait( )
 				if output_path: out.write( image )
 			#	Processed_frames.task_done( )
 
 			if show:
 				cv2.imshow( 'output', image )
-				if cv2.waitKey( 1 ) & 0xFF == ord( "q" ):
-					print( "Show_image_mp: Terminating..." )
+				if cv2.waitKey( 1 ) & 0xFF == ord( "q" ) and Stop.empty( ):
+					print( "Show_image_mp: Terminating...", flush = True )
 				#	cv2.destroyAllWindows( )
 					Stop.put( 1 )
 
-		elif not Stop_in.empty( ):
-			print( "Show_image_mp: Stop signaled..." )
-			Stop.put( 1 )
-			break
+		#	print( "Show_image_mp: {:.3f}".format( time.perf_counter( ) - tp ), flush = True )
+		#	print( "\t\t\t\t\t", Processed_frames.qsize( ), flush = True )
 
-	print( "Show_image_mp: Stopping..." )
+		if not Stop_in.empty( ):
+			if Stop.empty( ):
+				print( "Show_image_mp: Stop signaled...", flush = True )
+				Stop.put( 1 )
+			if tp >= 0. and time.perf_counter( ) - tp > PROCESS_TIMEOUT:
+				break
 
-def Get_image_mp( Stop, Original_frames, Frames_data, generator, video_path, input_size, width, height, fps, realtime ):
-	print( "Get_image_mp: Starting..." )
+	print( "Show_image_mp: End...", flush = True )
+	if output_path: out.release( )
+	if show: cv2.destroyAllWindows( )
+
+def Get_image_mp( Stop_in, Stop, Original_frames, Frames_data, generator, video_path, input_size, width, height, fps, realtime ):
+	print( f"Get_image_mp: {current_process( ).name}", flush = True )
 
 	if not generator:
 		if realtime:
@@ -422,19 +454,29 @@ def Get_image_mp( Stop, Original_frames, Frames_data, generator, video_path, inp
 	else:
 		vid = generator( width, height, fps )
 
+	tp = -1.
+
 	while True:
-		if not Stop.empty( ):
-			print( "Get_image_mp: Stop signaled..." )
+		if not Stop_in.empty( ):
+			print( "Get_image_mp: Stop signaled...", flush = True )
+			if Stop.empty( ):
+				Stop.put( 1 )
 			break
 
-		ret, original_image = vid.read( )
-		if not ret:
-			print( "Get_image_mp: End of input video stream..." )
-			Stop.put( 1 )
+		if not Stop.empty( ):
 			break
-		else:
-		#	original_image = cv2.cvtColor( img, cv2.COLOR_BGR2RGB )
-		#	original_image = cv2.cvtColor( original_image, cv2.COLOR_BGR2RGB )
+
+		if not Original_frames.full( ) and not Frames_data.full( ):
+			ret, original_image = vid.read( )
+			if not ret:
+				print( "Get_image_mp: End of input video stream...", flush = True )
+				if Stop.empty( ):
+					Stop.put( 1 )
+				if tp < 0.: sys.exit( 1 )
+				break
+
+			tp = time.perf_counter( )
+
 			Original_frames.put( original_image )
 
 			image_data = image_preprocess( np.copy( original_image ), [ input_size, input_size ] )
@@ -443,7 +485,7 @@ def Get_image_mp( Stop, Original_frames, Frames_data, generator, video_path, inp
 
 	vid.release( )
 
-	print( "Get_image_mp: Stopping..." )
+	print( "Get_image_mp: End...", flush = True )
 
 # detect from real-time video source
 def detect_video_realtime_mp( generator, video_path, output_path, input_size = 416, width = 640, height = 480, fps = 25, show = False, score_threshold = 0.3, iou_threshold = 0.45, realtime = False, rectangle_colors = '' ):
@@ -457,34 +499,27 @@ def detect_video_realtime_mp( generator, video_path, output_path, input_size = 4
 		height = int( vid.get( cv2.CAP_PROP_FRAME_HEIGHT ) )
 		fps = int( vid.get( cv2.CAP_PROP_FPS ) )
 		vid.release( )
-#	else:
-	#	width = height = input_size
-	#	width = 640
-	#	height = 480
-	#	fps = 25
 
-	Stop = Queue( )
-	Stop_postprocess = Queue( )
-	Stop_show = Queue( )
-	Original_frames = Queue( )
-	Frames_data = Queue( )
-	Predicted_data = Queue( )
-	Processed_frames = Queue( )
-	Processing_times = Queue( )
-#	Final_frames = Queue( )
+	print( f"Video width {width}, height {height} ({fps} FPS)" )
 
-	p0 = Process( target = Get_image_mp, args = ( Stop, Original_frames, Frames_data, generator, video_path, input_size, width, height, fps, realtime ) )
-	p1 = Process( target = Predict_bbox_mp, args = ( Stop, Stop_postprocess, Frames_data, Predicted_data, Processing_times ) )
-	p2 = Process( target = Postprocess_mp, args = ( Stop_postprocess, Stop_show, Predicted_data, Original_frames, Processed_frames, Processing_times, input_size, score_threshold, iou_threshold, realtime, rectangle_colors ) )
-	p3 = Process( target = Show_image_mp, args = ( Stop_show, Stop, Processed_frames, output_path, width, height, fps, show ) )
+	Stop_in = Queue( 1 )
+	Stop = Queue( 1 )
+	Stop_postprocess = Queue( 1 )
+	Stop_show = Queue( 1 )
+	Original_frames = Queue( QUEUE_SIZE )
+	Frames_data = Queue( QUEUE_SIZE )
+	Predicted_data = Queue( QUEUE_SIZE )
+	Processed_frames = Queue( QUEUE_SIZE )
+	Processing_times = Queue( QUEUE_SIZE )
+
+	p0 = Process( target = Get_image_mp, name = "Get_image_mp", args = ( Stop_in, Stop, Original_frames, Frames_data, generator, video_path, input_size, width, height, fps, realtime ) )
+	p1 = Process( target = Predict_bbox_mp, name = "YOLO", args = ( Stop, Stop_postprocess, Frames_data, Predicted_data, Processing_times ) )
+	p2 = Process( target = Postprocess_mp, name = "Postprocess_mp", args = ( Stop_postprocess, Stop_show, Predicted_data, Original_frames, Processed_frames, Processing_times, input_size, score_threshold, iou_threshold, realtime, rectangle_colors ) )
+	p3 = Process( target = Show_image_mp, name = "Show_image_mp", args = ( Stop_show, Stop_in, Processed_frames, output_path, width, height, fps, show ) )
 	p0.start( )
 	p1.start( )
 	p2.start( )
 	p3.start( )
-#	p0.join( 1 )
-#	p1.join( 1 )
-#	p2.join( 1 )
-#	p3.join( 1 )
 
 	while True:
 		time.sleep( 1 )
@@ -492,21 +527,32 @@ def detect_video_realtime_mp( generator, video_path, output_path, input_size = 4
 		if not p0.is_alive( ) or not p1.is_alive( ) or not p2.is_alive( ) or not p3.is_alive( ):
 			break
 
-	tm = time.perf_counter( )
+	tp = time.perf_counter( )
+
 	while True:
-	#	if time.perf_counter( ) - tm > 10 or not p0.is_alive( ) and not p1.is_alive( ) and not p2.is_alive( ) and not p3.is_alive( ):
-		if time.perf_counter( ) - tm > 10 or not p1.is_alive( ) and not p2.is_alive( ) and not p3.is_alive( ):
+		time.sleep( 1 )
+
+		if p0.exitcode or not p1.is_alive( ) and not p2.is_alive( ) and not p3.is_alive( ):
+			break
+		elif not Processed_frames.empty( ):
+			tp = time.perf_counter( )
+		elif time.perf_counter( ) - tp > QUEUE_TIMEOUT:
 			break
 
-	print( "Remains:", p0.is_alive( ), p1.is_alive( ), p2.is_alive( ), p3.is_alive( ) )
-	print( "\t", Original_frames.qsize( ), Frames_data.qsize( ), Predicted_data.qsize( ), Processed_frames.qsize( ) )
+	if p0.is_alive( ) or p1.is_alive( ) or p2.is_alive( ) or p3.is_alive( ):
+		time.sleep( 1 )
 
-	if p0.is_alive( ): p0.terminate( )
-	if p1.is_alive( ): p1.terminate( )
-	if p2.is_alive( ): p2.terminate( )
-	if p3.is_alive( ): p3.terminate( )
+	print( "Remains:", p0.is_alive( ), p1.is_alive( ), p2.is_alive( ), p3.is_alive( ), flush = True )
+	print( "\t", Original_frames.qsize( ), Frames_data.qsize( ), Predicted_data.qsize( ), Processed_frames.qsize( ), flush = True )
 
-	cv2.destroyAllWindows( )
+	if p0.is_alive( ): p0.terminate( ); time.sleep( .5 )
+	if p1.is_alive( ): p1.terminate( ); time.sleep( .5 )
+	if p2.is_alive( ): p2.terminate( ); time.sleep( .5 )
+	if p3.is_alive( ):
+		p3.terminate( ); time.sleep( .5 );
+		if show: cv2.destroyAllWindows( )
+
+#	print( "Remains:", p0.is_alive( ), p1.is_alive( ), p2.is_alive( ), p3.is_alive( ), flush = True )
 
 # detect from video file
 def detect_video( Yolo, video_path, output_path, input_size = 416, show = False, score_threshold = 0.3, iou_threshold = 0.45, rectangle_colors = '' ):
@@ -517,9 +563,12 @@ def detect_video( Yolo, video_path, output_path, input_size = 416, show = False,
 	width = int( vid.get( cv2.CAP_PROP_FRAME_WIDTH ) )
 	height = int( vid.get( cv2.CAP_PROP_FRAME_HEIGHT ) )
 	fps = int( vid.get( cv2.CAP_PROP_FPS ) )
+
+	print( f"Video width {width}, height {height} ({fps} FPS)" )
+
 	if output_path:
-		codec = cv2.VideoWriter_fourcc( *'XVID' )
-		out = cv2.VideoWriter( output_path, codec, fps, ( width, height ) )	# output_path must be .mp4
+		codec = cv2.VideoWriter_fourcc( 'm', 'p', '4', 'v' )
+		out = cv2.VideoWriter( output_path, codec, fps, ( width, height ) )
 
 #	Yolo.training = False
 
@@ -527,12 +576,6 @@ def detect_video( Yolo, video_path, output_path, input_size = 416, show = False,
 		ret, original_image = vid.read( )
 		if not ret:
 			break
-
-	#	try:
-	#		original_image = cv2.cvtColor( img, cv2.COLOR_BGR2RGB )
-	#		original_image = cv2.cvtColor( original_image, cv2.COLOR_BGR2RGB )
-	#	except:
-	#		break
 
 		image_data = image_preprocess( np.copy( original_image ), [ input_size, input_size ] )
 		image_data = image_data[ np.newaxis, ... ].astype( np.float32 )
@@ -557,7 +600,6 @@ def detect_video( Yolo, video_path, output_path, input_size = 416, show = False,
 
 		bboxes = postprocess_boxes( pred_bbox, original_image, input_size, score_threshold )
 		bboxes = nms( bboxes, iou_threshold, method = 'nms' )
-
 		image = draw_bbox( original_image, bboxes, rectangle_colors = rectangle_colors )
 
 		t3 = time.perf_counter( )
@@ -571,7 +613,7 @@ def detect_video( Yolo, video_path, output_path, input_size = 416, show = False,
 		fps = 1000 / ms
 		fps2 = 1000 / ( sum( times_2 ) / len( times_2 ) * 1000 )
 
-		image = cv2.putText( image, "{:.1f}FPS".format( fps ), ( 6, image.shape[ 0 ] - 6 ), cv2.FONT_HERSHEY_PLAIN, 1, ( 0, 0, 255 ), 2 )
+		image = cv2.putText( image, "{:.1f} FPS".format( fps ), ( 6, image.shape[ 0 ] - 6 ), cv2.FONT_HERSHEY_PLAIN, 1, ( 0, 0, 255 ), 2 )
 	#	CreateXMLfile( "XML_Detections", str( int( time.time( ) ) ), original_image, bboxes, CLASS_NAMES )
 
 		print( "Time: {:.2f}ms, Detection FPS: {:.1f}, total FPS: {:.1f}".format( ms, fps, fps2 ) )
@@ -583,7 +625,7 @@ def detect_video( Yolo, video_path, output_path, input_size = 416, show = False,
 
 	vid.release( )
 	if output_path: out.release( )
-	cv2.destroyAllWindows( )
+	if show: cv2.destroyAllWindows( )
 
 # detect from real-time video source
 def detect_realtime( Yolo, generator, output_path, input_size = 416, width = 640, height = 480, fps = 25, show = False, score_threshold = 0.3, iou_threshold = 0.45, rectangle_colors = '' ):
@@ -596,13 +638,13 @@ def detect_realtime( Yolo, generator, output_path, input_size = 416, width = 640
 		height = int( vid.get( cv2.CAP_PROP_FRAME_HEIGHT ) )
 		fps = int( vid.get( cv2.CAP_PROP_FPS ) )
 	else:
-	#	fps = 25
-	#	width = height = input_size
 		vid = generator( width, height, fps )
 
+	print( f"Video width {width}, height {height} ({fps} FPS)" )
+
 	if output_path:
-		codec = cv2.VideoWriter_fourcc( *'XVID' )
-		out = cv2.VideoWriter( output_path, codec, fps, ( width, height ) )	# output_path must be .mp4
+		codec = cv2.VideoWriter_fourcc( 'm', 'p', '4', 'v' )
+		out = cv2.VideoWriter( output_path, codec, fps, ( width, height ) )
 
 #	Yolo.training = False
 
@@ -610,12 +652,6 @@ def detect_realtime( Yolo, generator, output_path, input_size = 416, width = 640
 		ret, original_frame = vid.read( )
 		if not ret:
 			break
-
-	#	try:
-	#		original_frame = cv2.cvtColor( frame, cv2.COLOR_BGR2RGB )
-	#		original_frame = cv2.cvtColor( original_frame, cv2.COLOR_BGR2RGB )
-	#	except:
-	#		break
 
 		image_data = image_preprocess( np.copy( original_frame ), [ input_size, input_size ] )
 		image_data = image_data[ np.newaxis, ... ].astype( np.float32 )
@@ -651,7 +687,7 @@ def detect_realtime( Yolo, generator, output_path, input_size = 416, width = 640
 
 		frame = draw_bbox( original_frame, bboxes, rectangle_colors = rectangle_colors )
 	#	CreateXMLfile( "XML_Detections", str( int( time.time( ) ) ), original_frame, bboxes, CLASS_NAMES )
-		image = cv2.putText( frame, "{:.1f}FPS".format( fps ), ( 6, frame.shape[ 0 ] - 6 ), cv2.FONT_HERSHEY_PLAIN, 1, ( 0, 0, 255 ), 2 )
+		image = cv2.putText( frame, "{:.1f} FPS".format( fps ), ( 6, frame.shape[ 0 ] - 6 ), cv2.FONT_HERSHEY_PLAIN, 1, ( 0, 0, 255 ), 2 )
 
 		if output_path: out.write( frame )
 		if show:
@@ -661,4 +697,4 @@ def detect_realtime( Yolo, generator, output_path, input_size = 416, width = 640
 
 	vid.release( )
 	if output_path: out.release( )
-	cv2.destroyAllWindows( )
+	if show: cv2.destroyAllWindows( )

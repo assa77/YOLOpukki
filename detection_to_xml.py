@@ -11,8 +11,8 @@ from textwrap import dedent
 from lxml import etree
 import glob
 import os
-import cv2
 import time
+import cv2
 
 def CreateXMLfile( path, file_name, image, bboxes, class_names ):
 	boxes = [ ]

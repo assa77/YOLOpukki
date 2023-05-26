@@ -26,11 +26,7 @@ from yolov3.yolov4 import Create_Yolo, compute_loss
 from yolov3.utils import load_yolo_weights
 from evaluate_mAP import get_mAP
 
-if YOLO_TYPE == "yolov4":
-	Darknet_weights = YOLO_V4_TINY_WEIGHTS if TRAIN_YOLO_TINY else YOLO_V4_WEIGHTS
-if YOLO_TYPE == "yolov3":
-	Darknet_weights = YOLO_V3_TINY_WEIGHTS if TRAIN_YOLO_TINY else YOLO_V3_WEIGHTS
-if TRAIN_YOLO_TINY: TRAIN_MODEL_NAME += "_Tiny"
+if YOLO_TINY: TRAIN_MODEL_NAME += "_Tiny"
 
 def main( ):
 	global TRAIN_FROM_CHECKPOINT
@@ -56,12 +52,12 @@ def main( ):
 
 	if TRAIN_TRANSFER:
 		Darknet = Create_Yolo( input_size = YOLO_INPUT_SIZE, num_classes = len( read_class_names( YOLO_CLASSES ) ) )
-		load_yolo_weights( Darknet, Darknet_weights )	# use Darknet weights
+		load_yolo_weights( Darknet, DARKNET_WEIGHTS )	# use Darknet weights
 
 	yolo = Create_Yolo( input_size = YOLO_INPUT_SIZE, training = True )
 	if TRAIN_FROM_CHECKPOINT:
 		try:
-			yolo.load_weights( f"./{TRAIN_CHECKPOINTS_FOLDER}/{TRAIN_MODEL_NAME}" )
+			yolo.load_weights( f"./{YOLO_CHECKPOINTS}/{TRAIN_MODEL_NAME}" )
 		except ValueError:
 			print( "Shapes are incompatible, transfering Darknet weights" )
 			TRAIN_FROM_CHECKPOINT = False
@@ -83,7 +79,7 @@ def main( ):
 			giou_loss = conf_loss = prob_loss = 0
 
 			# optimizing process
-			grid = 3 if not TRAIN_YOLO_TINY else 2
+			grid = 3 if not YOLO_TINY else 2
 			for i in range( grid ):
 				conv, pred = pred_result[ i * 2 ], pred_result[ i * 2 + 1 ]
 				loss_items = compute_loss( pred, conv, *target[ i ], i )
@@ -124,7 +120,7 @@ def main( ):
 			giou_loss = conf_loss = prob_loss = 0
 
 			# optimizing process
-			grid = 3 if not TRAIN_YOLO_TINY else 2
+			grid = 3 if not YOLO_TINY else 2
 			for i in range( grid ):
 				conv, pred = pred_result[ i * 2 ], pred_result[ i * 2 + 1 ]
 				loss_items = compute_loss( pred, conv, *target[ i ], i )
@@ -155,7 +151,7 @@ def main( ):
 
 		if len( testset ) == 0:
 			print( "configure TEST options to validate model" )
-			yolo.save_weights( os.path.join( TRAIN_CHECKPOINTS_FOLDER, TRAIN_MODEL_NAME ) )
+			yolo.save_weights( os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME ) )
 			continue
 
 		count, giou_val, conf_val, prob_val, total_val = 0., 0, 0, 0, 0
@@ -187,14 +183,14 @@ def main( ):
 			epoch, giou_val / count, conf_val / count, prob_val / count, total_val / count ) )
 
 		if TRAIN_SAVE_CHECKPOINT and not TRAIN_SAVE_BEST_ONLY:
-			save_directory = os.path.join( TRAIN_CHECKPOINTS_FOLDER, TRAIN_MODEL_NAME + "_val_loss_{:7.2f}".format( total_val / count ) )
+			save_directory = os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME + "_val_loss_{:7.2f}".format( total_val / count ) )
 			yolo.save_weights( save_directory )
 		if TRAIN_SAVE_BEST_ONLY and best_val_loss > total_val / count:
-			save_directory = os.path.join( TRAIN_CHECKPOINTS_FOLDER, TRAIN_MODEL_NAME )
+			save_directory = os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME )
 			yolo.save_weights( save_directory )
 			best_val_loss = total_val / count
 		if not TRAIN_SAVE_BEST_ONLY and not TRAIN_SAVE_CHECKPOINT:
-			save_directory = os.path.join( TRAIN_CHECKPOINTS_FOLDER, TRAIN_MODEL_NAME )
+			save_directory = os.path.join( YOLO_CHECKPOINTS, TRAIN_MODEL_NAME )
 			yolo.save_weights( save_directory )
 
 	# measure mAP of trained custom model
@@ -208,4 +204,4 @@ if __name__ == '__main__':
 	try:
 		with tf.device( '/device:GPU:{}'.format( GPU ) ): main( )
 	except RuntimeError as e:
-		print( e )
+		print( "***ERROR:", e )

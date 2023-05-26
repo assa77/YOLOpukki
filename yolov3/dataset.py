@@ -8,9 +8,9 @@
 ###############################################################################
 
 import os
-import cv2
 import random
 import numpy as np
+import cv2
 import tensorflow as tf
 from yolov3.classes import *
 from yolov3.utils import image_preprocess
@@ -19,12 +19,12 @@ from yolov3.yolov3 import bbox_iou
 class Dataset( object ):
 	# Dataset preprocess implementation
 	def __init__( self, dataset_type, size = 0, TEST_INPUT_SIZE = TEST_INPUT_SIZE ):
-		self.annot_path = TRAIN_ANNOT_PATH if dataset_type == 'train' else TEST_ANNOT_PATH
+		self.annot_path = TRAIN_ANNOTATIONS if dataset_type == 'train' else TEST_ANNOTATIONS
 		self.input_sizes = TRAIN_INPUT_SIZE if dataset_type == 'train' else TEST_INPUT_SIZE
 		self.batch_size = TRAIN_BATCH_SIZE if dataset_type == 'train' else TEST_BATCH_SIZE
 		self.data_aug = TRAIN_DATA_AUG if dataset_type == 'train' else TEST_DATA_AUG
 
-		self.train_yolo_tiny = TRAIN_YOLO_TINY
+		self.train_yolo_tiny = YOLO_TINY
 		self.train_input_sizes = TRAIN_INPUT_SIZE
 		self.strides = np.array( YOLO_STRIDES )
 		self.classes = CLASS_NAMES

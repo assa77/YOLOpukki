@@ -1,3 +1,3 @@
 #/bin/sh
 
-python detect_mnist.py
+python detect_image.py

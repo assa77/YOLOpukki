@@ -17,7 +17,8 @@ from yolov3.classes import *
 
 physical_devices = tf.config.experimental.list_physical_devices( 'GPU' )
 if len( physical_devices ) > 0:
-	tf.config.experimental.set_memory_growth( physical_devices[ 0 ], True )
+	try: tf.config.experimental.set_memory_growth( physical_devices[ 0 ], True )
+	except RuntimeError: pass
 from tensorflow.experimental import tensorrt as trt
 #from tensorflow.python.compiler.tensorrt import trt_convert as trt
 
@@ -59,10 +60,10 @@ def convert_to_trt( quantize_mode ):
 
 	#converter.build( )
 
-	if TRAIN_YOLO_TINY:
-		output_saved_model_dir = f'./{TRAIN_CHECKPOINTS_FOLDER}/{YOLO_TYPE}-tiny-trt-{quantize_mode}-{YOLO_INPUT_SIZE}'
+	if not YOLO_CUSTOM_WEIGHTS:
+		SAVED_TRT_MODEL = f"./{YOLO_CHECKPOINTS}/{YOLO_TYPE}{'-tiny' if YOLO_TINY else ''}-trt-{YOLO_TRT_QUANTIZE_MODE}-{YOLO_INPUT_SIZE}"
 	else:
-		output_saved_model_dir = f'./{TRAIN_CHECKPOINTS_FOLDER}/{YOLO_TYPE}-trt-{quantize_mode}-{YOLO_INPUT_SIZE}'
+		SAVED_TRT_MODEL = f"{CUSTOM_WEIGHTS}-trt-{YOLO_TRT_QUANTIZE_MODE}-{YOLO_INPUT_SIZE}"
 	converter.save( output_saved_model_dir = output_saved_model_dir )
 	print( f'Done converting to TensorRT ( {quantize_mode} ), model saved to:', repr( output_saved_model_dir ) )
 

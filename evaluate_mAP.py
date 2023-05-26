@@ -9,8 +9,8 @@
 
 import os
 os.environ[ 'CUDA_VISIBLE_DEVICES' ] = '0'
-import cv2
 import numpy as np
+import cv2
 import tensorflow as tf
 #from tensorflow.python.saved_model import tag_constants
 from yolov3.classes import *
@@ -24,7 +24,7 @@ import time
 gpus = tf.config.experimental.list_physical_devices( 'GPU' )
 if len( gpus ) > 0:
 	try: tf.config.experimental.set_memory_growth( gpus[ 0 ], True )
-	except RuntimeError: print( "RuntimeError in tf.config.experimental.list_physical_devices( 'GPU' )" )
+	except RuntimeError: pass
 
 def voc_ap( rec, prec ):
 	"""

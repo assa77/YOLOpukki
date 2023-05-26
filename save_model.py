@@ -19,7 +19,7 @@ yolo = Create_Yolo( input_size = YOLO_INPUT_SIZE )
 if not YOLO_CUSTOM_WEIGHTS:
 	load_yolo_weights( yolo, DARKNET_WEIGHTS )	# use Darknet weights
 else:
-	yolo.load_weights( DARKNET_WEIGHTS )		# use custom weights
+	yolo.load_weights( CUSTOM_WEIGHTS )		# use custom weights
 
 yolo.summary( )
 

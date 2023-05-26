@@ -10,15 +10,11 @@
 #import set_working_directory
 import os
 os.environ[ 'CUDA_VISIBLE_DEVICES' ] = '0'
-import cv2
-import numpy as np
 import random
-import time
+import cv2
 import tensorflow as tf
-#import tensorflow_hub as hub
 from yolov3.classes import *
-#from yolov3.yolov4 import Create_Yolo
-from yolov3.utils import Load_Yolo_model
+#from yolov3.utils import Load_Yolo_model
 from yolov3.utils import detect_image
 
 print( "Loading model:", repr( SAVED_MODEL ) )
@@ -30,11 +26,14 @@ yolo = tf.keras.models.load_model( SAVED_MODEL )
 # Show the model architecture
 yolo.summary( )
 
-test_annotations = open( "mnist_test.txt" ).readlines( )
+test_annotations = open( TEST_ANNOTATIONS ).readlines( )
 
 while True:
 	ID = random.randint( 0, 1999 )
 	image_info = test_annotations[ ID ].split( )
 	image_path = image_info[ 0 ]
 	print( image_info )
-	detect_image( yolo, image_path, "mnist_test.jpg", input_size = YOLO_INPUT_SIZE, show = True )#, rectangle_colors = ( 255, 0, 0 ) )
+	if detect_image( yolo, image_path, "test.jpg", input_size = YOLO_INPUT_SIZE, show = True ) is None:#, rectangle_colors = ( 255,0,0 ) ) is None:
+		break
+
+cv2.destroyAllWindows( )

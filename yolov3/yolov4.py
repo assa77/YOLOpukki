@@ -365,7 +365,7 @@ def YOLOv4_tiny( input_layer, num_classes, training ):
 def Create_Yolo( input_size = 416, channels = 3, num_classes = NUM_CLASSES, training = False ):
 	input_layer = Input( [ input_size, input_size, channels ] )
 
-	if TRAIN_YOLO_TINY:
+	if YOLO_TINY:
 		if YOLO_TYPE == "yolov4":
 			conv_tensors = YOLOv4_tiny( input_layer, num_classes, training )
 		if YOLO_TYPE == "yolov3":

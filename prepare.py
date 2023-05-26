@@ -169,8 +169,8 @@ def make_image( data, image, label, ratio = 1 ):
 for dataset,file in [ data_sets.train, 'train' ],[ data_sets.test, 'test' ]:
 #	images_path = os.getcwd( )+f"/mnist_{file}"
 #	labels_txt = os.getcwd( )+f"/mnist_{file}.txt"
-	images_path = f"./mnist_{file}"
-	labels_txt = f"./mnist_{file}.txt"
+	images_path = f"./mnist/mnist_{file}"
+	labels_txt = f"./mnist/mnist_{file}.txt"
 
 #	images_num = dataset.num_examples
 	if dataset == data_sets.train: images_num = images_num_train
