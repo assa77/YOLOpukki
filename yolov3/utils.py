@@ -341,7 +341,7 @@ def Predict_bbox_mp( Stop_in, Stop, Frames_data, Predicted_data, Processing_time
 		"""
 		ATTENTION!
 		Queue.empty( ) implementation in the queue module (and multiprocessing.Queue too) seems to be broken, and this code omits it,
-		but Queue.qsize( ) may be not implemented on MacOS.
+		but Queue.qsize( ) may not be implemented on MacOS.
 		Queue from multiprocessing.Manager( ) looks working and is in use now, although it's significantly slower.
 		"""
 	#	while Frames_data.qsize( ) if realtime else not frame:
@@ -557,7 +557,7 @@ def detect_video_realtime_mp( generator, video_path, output_path, input_size = 4
 
 	"""
 	ATTENTION!
-	Queue.empty( ) implementation in the queue module and multiprocessing.Queue seems to be broken and Queue.qsize( ) may be not on MacOS.
+	Queue.empty( ) implementation in the queue module and multiprocessing.Queue seems to be broken and Queue.qsize( ) may not be implemented on MacOS.
 	Queue from multiprocessing.Manager( ) looks working and is in use now, although it's significantly slower.
 	"""
 #	Stop_in = Queue( 1 )
