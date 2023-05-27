@@ -22,7 +22,8 @@ def main( ):
 #	yolo = Load_Yolo_model( )
 #	detect_realtime( yolo, generator, "output.avi", input_size = YOLO_INPUT_SIZE, width = 640, height = 480, show = True )#, rectangle_colors = ( 255, 0, 0 ) )
 
-	detect_video_realtime_mp( generator, "", "output.avi", input_size = YOLO_INPUT_SIZE, width = 640, height = 480, show = True, realtime = True )#, rectangle_colors = ( 255, 0, 0 ) )
+#	detect_video_realtime_mp( generator, "", "output.avi", input_size = YOLO_INPUT_SIZE, width = 640, height = 480, show = True, realtime = True )#, rectangle_colors = ( 255, 0, 0 ) )
+	detect_video_realtime_mp( generator, "", "output.avi", input_size = YOLO_INPUT_SIZE, width = 640, height = 480, show = True, realtime = False )#, rectangle_colors = ( 255, 0, 0 ) )
 
 if __name__ == '__main__':
 	main( )

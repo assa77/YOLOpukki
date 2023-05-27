@@ -44,7 +44,7 @@ class generator( object ):
 	RATIOS = [ 0.4, 4. ]
 	SIZES = [ 0.1, RATIOS[ 1 ] / 6 ]
 
-	def __init__( self, width, height, fps = 25, no_of_frames = 0 ):
+	def __init__( self, width, height, fps = 30, no_of_frames = 0 ):
 		self.width = width
 		self.height = height
 		self.fps = fps
@@ -149,9 +149,10 @@ class generator( object ):
 			else:
 				self.new( mask[ i ] )
 
-		while True:
+		while self.fps:
 			tm = time.perf_counter( )
 			if tm - self.time >= 1. / self.fps:
 				self.time = tm
 				break
+
 		return ( True, blank )

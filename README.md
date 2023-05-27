@@ -34,6 +34,8 @@ Run [train.bat](train.bat)/[train.sh](train.sh) to train YOLOv3/YOLOv4 on the re
 - [detect_video_mp.bat](detect_video_mp.bat)/[detect_video_mp.sh](detect_video_mp.sh) to view a video detection demo using the multiprocessing feature (should be *YOLO_CUSTOM_WEIGHTS = True*)
 - [detect_video_file.bat](detect_video_file.bat) [test.mp4](test.mp4)/[detect_video_file.sh](detect_video_file.sh) [test.mp4](test.mp4) (or any other video file or even live video if no file name is specified) to view a multiprocessing video file detection demo (don't forget to edit [yolov3/configs.py](yolov3/configs.py) or copy it from [yolov3/coco](yolov3/coco) or [yolov3/coco.tiny](yolov3/coco.tiny) subdirectory, should be *YOLO_CUSTOM_WEIGHTS = False* for real video files)
 
+Use the `q` key to exit the continuous demo or any other key for a new image.
+
 All demos will produce image [test.jpg](test.jpg), video [output.avi](output.avi) or [test.avi](test.avi) files saved into the root directory of the project.
 
 ## Performance
