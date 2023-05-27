@@ -615,7 +615,7 @@ def detect_video_realtime_mp( generator, video_path, output_path, input_size = 4
 		time.sleep( 1 )
 
 	print( "Remains:", p0.is_alive( ), p1.is_alive( ), p2.is_alive( ), p3.is_alive( ), flush = True )
-	print( "\t", Original_frames.qsize( ), Frames_data.qsize( ), Predicted_data.qsize( ), Processed_data.qsize( ), flush = True )
+#	print( "\t", Original_frames.qsize( ), Frames_data.qsize( ), Predicted_data.qsize( ), Processed_data.qsize( ), flush = True )
 
 	if p0.is_alive( ): p0.terminate( ); time.sleep( EXIT_TIMEOUT )
 	if p1.is_alive( ): p1.terminate( ); time.sleep( EXIT_TIMEOUT )
